@@ -29,20 +29,29 @@ def main(args=None):
         model_name="CNNTD3",
     )
 
-    sim = SIM(world_file="worlds/eval_world.yaml")
-    
     with open("robot_nav/eval_points.yaml") as file:
         points = yaml.safe_load(file)
     robot_poses = points["robot"]["poses"]
     robot_goals = points["robot"]["goals"]
 
-    # Initialize A* Planner (Occupancy Grid is built once)
-    planner = AStarPlanner(sim, resolution=0.2, margin=0.3)
-
     print("..............................................")
     print(f"Testing Hybrid Architecture: A* + RL")
     
+    sim = None
+    planner = None
+
     for idx in range(len(robot_poses)):
+        if idx == 0:
+            print("\n=== PHASE 1: STATIC OBSTACLES (Scenarios 1-5) ===")
+            sim = SIM(world_file="worlds/eval_world.yaml")
+            planner = AStarPlanner(sim, resolution=0.2, margin=0.3)
+        elif idx == 5:
+            print("\n=== PHASE 2: DYNAMIC OBSTACLES (Scenarios 6-10) ===")
+            if hasattr(sim.env, '_env_plot'):
+                plt.close('all')
+            sim = SIM(world_file="worlds/eval_world_dynamic.yaml")
+            planner = AStarPlanner(sim, resolution=0.2, margin=0.3)
+            
         count = 0
         latest_scan, distance, cos, sin, collision, goal_reached, a, reward = sim.reset(
             robot_state=robot_poses[idx][:3],
@@ -115,7 +124,7 @@ def main(args=None):
                 latest_scan, distance, cos, sin, collision, goal_reached, a
             )
             action = model.get_action(np.array(state), False)
-            a_in = [(action[0] + 1) / 4, action[1]]
+            a_in = [action[0], action[1]]
             
             # Execute step
             latest_scan, distance, cos, sin, collision, goal_reached, a, reward = sim.step(

@@ -1,0 +1,25 @@
+world:
+  height: 10  # the height of the world
+  width: 10   # the height of the world
+  step_time: 0.3  # Hz calculate each step
+  sample_time: 0.3  # Hz for render and data extraction
+  collision_mode: 'reactive'
+
+robot:
+  - kinematics: {name: 'diff'}
+    shape: {name: 'circle', radius: 0.2}
+    vel_min: [ 0, -1.0 ]
+    vel_max: [ 1.0, 1.0 ]
+    state: [3, 4, 0, 0]
+    goal: [9, 9, 0]
+    arrive_mode: position
+    goal_threshold: 0.3
+
+obstacle:
+  - number: 1
+    kinematics: {name: 'omni'}
+    state: [7, 5, 0]
+    behavior: {name: 'rvo', wander: True, range_low: [6, 4, -3.14], range_high: [8, 6, 3.14], vxmax: 0.3, vymax: 0.3, factor: 1.0}
+    vel_max: [0.3, 0.3]
+    vel_min: [-0.3, -0.3]
+    shape: {name: 'circle', radius: 0.4}

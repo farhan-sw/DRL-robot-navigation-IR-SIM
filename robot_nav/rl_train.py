@@ -31,7 +31,7 @@ def main(args=None):
     train_every_n = 2  # train and update network parameters every n episodes
     training_iterations = 40 if parsed_args.fast_train else 80  # how many batches to use for single training cycle
     batch_size = 64  # batch size for each training iteration
-    max_steps = 100  # maximum number of steps in single episode (100 steps * 0.3s = 30 detik simulasi)
+    max_steps = 400  # maximum number of steps in single episode (400 steps * 0.3s = 120 detik simulasi)
     steps = 0  # starting step number
     load_saved_buffer = False  # whether to load experiences from assets/data.yml
     pretrain = False  # whether to use the loaded experiences to pre-train the model (load_saved_buffer must be True)
@@ -79,10 +79,11 @@ def main(args=None):
             )  # get state a state representation from returned data from the environment
 
             action = model.get_action(np.array(state), True)  # get an action from the model
+            # action is [linear_vel, angular_vel] in range [-1, 1]
             a_in = [
-                (action[0] + 1) / 4,
+                action[0],
                 action[1],
-            ]  # clip linear velocity to [0, 0.5] m/s range
+            ]  # mapped to [-1.0, 1.0] m/s and rad/s
 
             latest_scan, distance, cos, sin, collision, goal, a, reward = sim.step(
                 lin_velocity=a_in[0], ang_velocity=a_in[1]
@@ -139,7 +140,8 @@ def evaluate(model, epoch, sim, eval_episodes=10):
                 latest_scan, distance, cos, sin, collision, goal, a
             )
             action = model.get_action(np.array(state), False)
-            a_in = [(action[0] + 1) / 4, action[1]]
+            # action mapping for evaluation
+            a_in = [action[0], action[1]]
             latest_scan, distance, cos, sin, collision, goal, a, reward = sim.step(
                 lin_velocity=a_in[0], ang_velocity=a_in[1]
             )
