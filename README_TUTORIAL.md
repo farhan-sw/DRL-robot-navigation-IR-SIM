@@ -23,14 +23,20 @@ Jika Anda ingin melihat secara visual bagaimana robot bergerak mengeksplorasi ar
 poetry run python robot_nav/rl_train.py --render
 ```
 
-### C. Melanjutkan Training (Auto-Resume)
+### C. Training Lebih Cepat (Fast Train)
+Jika Anda merasa proses perhitungan kalkulasi masih terlalu memakan waktu, Anda bisa menggunakan *flag* `--fast-train`. Opsi ini akan memotong beban iterasi *Neural Network* sebesar 50% setiap episodenya. Kekurangannya, robot mungkin membutuhkan waktu eksplorasi lebih lama (lebih banyak ronde/siklus) untuk bisa sepintar versi aslinya.
+```bash
+poetry run python robot_nav/rl_train.py --fast-train
+```
+
+### D. Melanjutkan Training (Auto-Resume)
 Jika proses training sebelumnya terhenti (misalnya laptop mati atau dihentikan manual), Anda **tidak perlu mengajari robot dari nol (bodoh) lagi**. Gunakan *flag* `--resume` untuk otomatis memuat bobot (*weights*) parameter terakhir.
 ```bash
 poetry run python robot_nav/rl_train.py --resume
 ```
 *(Tips: Parameter bisa digabung, contohnya: `poetry run python robot_nav/rl_train.py --resume --render`)*
 
-### D. Fitur Auto-Save & Safe Exit (Ctrl + C)
+### E. Fitur Auto-Save & Safe Exit (Ctrl + C)
 - **Auto-Save Rutin**: Sistem akan menyimpan model secara otomatis setiap 5 siklus pelatihan ke dalam folder `robot_nav/models/CNNTD3/checkpoint/`.
 - **Safe Exit (Penyelamat Data)**: Jika sewaktu-waktu Anda menekan `Ctrl + C` di terminal untuk menghentikan program, sistem tidak akan langsung *crash*, melainkan mencegat instruksi tersebut, **menyimpan posisi otak model saat itu juga**, lalu keluar dengan aman.
 

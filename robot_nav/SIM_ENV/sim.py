@@ -63,7 +63,7 @@ class SIM(SIM_ENV):
         cos, sin = self.cossin(pose_vector, goal_vector)
         collision = self.env.robot.collision
         action = [lin_velocity, ang_velocity]
-        reward = self.get_reward(goal, collision, action, latest_scan)
+        reward = self.get_reward(goal, collision, action, latest_scan, cos)
 
         return latest_scan, distance, cos, sin, collision, goal, action, reward
 
@@ -106,11 +106,19 @@ class SIM(SIM_ENV):
             )
 
         if robot_goal is None:
-            self.env.robot.set_random_goal(
-                obstacle_list=self.env.obstacle_list,
-                init=True,
-                range_limits=[[1, 1, -3.141592653589793], [9, 9, 3.141592653589793]],
-            )
+            while True:
+                self.env.robot.set_random_goal(
+                    obstacle_list=self.env.obstacle_list,
+                    init=True,
+                    range_limits=[[1, 1, -3.141592653589793], [9, 9, 3.141592653589793]],
+                )
+                goal_pos = self.env.robot.goal
+                dist = np.linalg.norm([
+                    goal_pos[0].item() - robot_state[0][0],
+                    goal_pos[1].item() - robot_state[1][0]
+                ])
+                if 1.0 <= dist <= 2.5:
+                    break
         else:
             self.env.robot.set_goal(np.array(robot_goal), init=True)
         self.env.reset()
@@ -123,7 +131,7 @@ class SIM(SIM_ENV):
         return latest_scan, distance, cos, sin, False, False, action, reward
 
     @staticmethod
-    def get_reward(goal, collision, action, laser_scan):
+    def get_reward(goal, collision, action, laser_scan, cos_angle=0.0):
         """
         Calculate the reward for the current step.
 
@@ -132,6 +140,7 @@ class SIM(SIM_ENV):
             collision (bool): Whether a collision occurred.
             action (list): The action taken [linear velocity, angular velocity].
             laser_scan (list): The LIDAR scan readings.
+            cos_angle (float): The cosine of the angle between robot heading and goal direction.
 
         Returns:
             (float): Computed reward for the current state.
@@ -139,7 +148,22 @@ class SIM(SIM_ENV):
         if goal:
             return 100.0
         elif collision:
-            return -100.0
+            # Mengurangi hukuman tabrakan (dari -100) agar robot tidak terlalu "penakut"
+            return -20.0
         else:
             r3 = lambda x: 1.35 - x if x < 1.35 else 0.0
-            return action[0] - abs(action[1]) / 2 - r3(min(laser_scan)) / 2
+            
+            # action[0] = lin_vel (0 hingga 0.5), action[1] = ang_vel (-1 hingga 1)
+            # Memberi reward jika maju *searah* dengan arah tujuan (cos > 0)
+            progress_reward = action[0] * (cos_angle * 2.0)
+            
+            # Memberi hukuman berat jika robot hanya berputar-putar di tempat
+            spin_penalty = abs(action[1]) * 1.5
+            
+            # Hukuman jika terlalu dekat dengan rintangan
+            obstacle_penalty = r3(min(laser_scan)) * 2.0
+            
+            # Hukuman waktu (memaksa robot bergerak cepat)
+            time_penalty = 0.2
+            
+            return progress_reward - spin_penalty - obstacle_penalty - time_penalty

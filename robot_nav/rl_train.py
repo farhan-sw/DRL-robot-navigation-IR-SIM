@@ -14,6 +14,7 @@ def main(args=None):
     parser = argparse.ArgumentParser(description="Train RL agent for robot navigation.")
     parser.add_argument("--render", action="store_true", help="Enable GUI rendering during training (slows down training drastically).")
     parser.add_argument("--resume", action="store_true", help="Resume training from the last saved model checkpoint.")
+    parser.add_argument("--fast-train", action="store_true", help="Sacrifice some learning stability for faster training speed.")
     parsed_args = parser.parse_args()
     
     action_dim = 2  # number of actions produced by the model
@@ -28,9 +29,9 @@ def main(args=None):
     episodes_per_epoch = 70  # how many episodes to run in single epoch
     episode = 0  # starting episode number
     train_every_n = 2  # train and update network parameters every n episodes
-    training_iterations = 80  # how many batches to use for single training cycle
+    training_iterations = 40 if parsed_args.fast_train else 80  # how many batches to use for single training cycle
     batch_size = 64  # batch size for each training iteration
-    max_steps = 300  # maximum number of steps in single episode
+    max_steps = 100  # maximum number of steps in single episode (100 steps * 0.3s = 30 detik simulasi)
     steps = 0  # starting step number
     load_saved_buffer = False  # whether to load experiences from assets/data.yml
     pretrain = False  # whether to use the loaded experiences to pre-train the model (load_saved_buffer must be True)

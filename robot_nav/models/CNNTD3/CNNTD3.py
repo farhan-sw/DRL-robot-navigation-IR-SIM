@@ -273,7 +273,8 @@ class CNNTD3(object):
         """
         # Function to get the action from the actor
         state = torch.Tensor(state).to(self.device)
-        return self.actor(state).cpu().data.numpy().flatten()
+        with torch.no_grad():
+            return self.actor(state).cpu().data.numpy().flatten()
 
     # training cycle
     def train(
