@@ -2,12 +2,18 @@ from robot_nav.models.CNNTD3.CNNTD3 import CNNTD3
 
 import torch
 import numpy as np
+import argparse
 from robot_nav.SIM_ENV.sim import SIM
 from utils import get_buffer
 
 
 def main(args=None):
     """Main training function"""
+    parser = argparse.ArgumentParser(description="Train RL agent for robot navigation.")
+    parser.add_argument("--render", action="store_true", help="Enable GUI rendering during training (slows down training drastically).")
+    parser.add_argument("--resume", action="store_true", help="Resume training from the last saved model checkpoint.")
+    parsed_args = parser.parse_args()
+    
     action_dim = 2  # number of actions produced by the model
     max_action = 1  # maximum absolute value of output actions
     state_dim = 185  # number of input values in the neural network (vector length of state input)
@@ -37,12 +43,12 @@ def main(args=None):
         max_action=max_action,
         device=device,
         save_every=save_every,
-        load_model=False,
+        load_model=parsed_args.resume,
         model_name="CNNTD3",
     )  # instantiate a model
 
     sim = SIM(
-        world_file="worlds/robot_world.yaml", disable_plotting=False
+        world_file="worlds/robot_world.yaml", disable_plotting=not parsed_args.render
     )  # instantiate environment
     replay_buffer = get_buffer(
         model,
@@ -58,49 +64,56 @@ def main(args=None):
         lin_velocity=0.0, ang_velocity=0.0
     )  # get the initial step state
 
-    while epoch < max_epochs:  # train until max_epochs is reached
-        state, terminal = model.prepare_state(
-            latest_scan, distance, cos, sin, collision, goal, a
-        )  # get state a state representation from returned data from the environment
+    try:
+        while epoch < max_epochs:  # train until max_epochs is reached
+            state, terminal = model.prepare_state(
+                latest_scan, distance, cos, sin, collision, goal, a
+            )  # get state a state representation from returned data from the environment
 
-        action = model.get_action(np.array(state), True)  # get an action from the model
-        a_in = [
-            (action[0] + 1) / 4,
-            action[1],
-        ]  # clip linear velocity to [0, 0.5] m/s range
+            action = model.get_action(np.array(state), True)  # get an action from the model
+            a_in = [
+                (action[0] + 1) / 4,
+                action[1],
+            ]  # clip linear velocity to [0, 0.5] m/s range
 
-        latest_scan, distance, cos, sin, collision, goal, a, reward = sim.step(
-            lin_velocity=a_in[0], ang_velocity=a_in[1]
-        )  # get data from the environment
-        next_state, terminal = model.prepare_state(
-            latest_scan, distance, cos, sin, collision, goal, a
-        )  # get a next state representation
-        replay_buffer.add(
-            state, action, reward, terminal, next_state
-        )  # add experience to the replay buffer
+            latest_scan, distance, cos, sin, collision, goal, a, reward = sim.step(
+                lin_velocity=a_in[0], ang_velocity=a_in[1]
+            )  # get data from the environment
+            next_state, terminal = model.prepare_state(
+                latest_scan, distance, cos, sin, collision, goal, a
+            )  # get a next state representation
+            replay_buffer.add(
+                state, action, reward, terminal, next_state
+            )  # add experience to the replay buffer
 
-        if (
-            terminal or steps == max_steps
-        ):  # reset environment of terminal stat ereached, or max_steps were taken
-            latest_scan, distance, cos, sin, collision, goal, a, reward = sim.reset()
-            episode += 1
-            if episode % train_every_n == 0:
-                model.train(
-                    replay_buffer=replay_buffer,
-                    iterations=training_iterations,
-                    batch_size=batch_size,
-                )  # train the model and update its parameters
+            if (
+                terminal or steps == max_steps
+            ):  # reset environment of terminal stat ereached, or max_steps were taken
+                latest_scan, distance, cos, sin, collision, goal, a, reward = sim.reset()
+                episode += 1
+                if episode % train_every_n == 0:
+                    model.train(
+                        replay_buffer=replay_buffer,
+                        iterations=training_iterations,
+                        batch_size=batch_size,
+                    )  # train the model and update its parameters
 
-            steps = 0
-        else:
-            steps += 1
+                steps = 0
+            else:
+                steps += 1
 
-        if (
-            episode + 1
-        ) % episodes_per_epoch == 0:  # if epoch is concluded, run evaluation
-            episode = 0
-            epoch += 1
-            evaluate(model, epoch, sim, eval_episodes=nr_eval_episodes)
+            if (
+                episode + 1
+            ) % episodes_per_epoch == 0:  # if epoch is concluded, run evaluation
+                episode = 0
+                epoch += 1
+                evaluate(model, epoch, sim, eval_episodes=nr_eval_episodes)
+                
+    except KeyboardInterrupt:
+        print("\n[Ctrl+C Detected] Training interrupted by user.")
+        print("Saving the current model checkpoint to prevent data loss...")
+        model.save(filename=model.model_name, directory=model.save_directory)
+        print(f"Model saved successfully at {model.save_directory}. Exiting.")
 
 
 def evaluate(model, epoch, sim, eval_episodes=10):
