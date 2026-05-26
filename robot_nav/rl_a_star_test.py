@@ -1,4 +1,4 @@
-from models.TD3.TD3 import TD3
+from robot_nav.models.CNNTD3.CNNTD3 import CNNTD3
 from a_star import AStarPlanner
 
 import torch
@@ -7,22 +7,26 @@ from robot_nav.SIM_ENV.sim import SIM
 import yaml
 import math
 import matplotlib.pyplot as plt
+import argparse
 
 def main(args=None):
+    parser = argparse.ArgumentParser(description="Test Hybrid Architecture (A* + RL)")
+    parser.add_argument("--random-weights", action="store_true", help="Run with random untrained weights instead of loading the checkpoint.")
+    parsed_args = parser.parse_args()
+    
     action_dim = 2
     max_action = 1
-    state_dim = 25
+    state_dim = 185
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    # Note: load_model=False is used because there is no trained weights available yet.
-    # The RL agent will act randomly/sub-optimally. Train it using rl_train.py first!
-    model = TD3(
+    # Note: By default, we load the trained model.
+    # Use --random-weights to test without loading the checkpoint.
+    model = CNNTD3(
         state_dim=state_dim,
         action_dim=action_dim,
         max_action=max_action,
         device=device,
-        load_model=False,
-        model_name="TD3",
+        load_model=not parsed_args.random_weights,
+        model_name="CNNTD3",
     )
 
     sim = SIM(world_file="worlds/eval_world.yaml")
@@ -58,9 +62,10 @@ def main(args=None):
             
         print(f"Path found with {len(global_path)} waypoints.")
         
-        # Visualize the A* path robustly using matplotlib directly
+        # Visualize the A* path robustly using matplotlib directly (drawn ONCE)
         if hasattr(sim.env, '_env_plot') and hasattr(sim.env._env_plot, 'ax'):
             ax = sim.env._env_plot.ax
+            
             # Clear previous scenario's A* drawings if they exist
             if hasattr(sim, 'a_star_lines'):
                 for line in sim.a_star_lines:

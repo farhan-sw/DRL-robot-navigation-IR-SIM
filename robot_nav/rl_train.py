@@ -3,6 +3,8 @@ from robot_nav.models.CNNTD3.CNNTD3 import CNNTD3
 import torch
 import numpy as np
 import argparse
+import sys
+from loguru import logger
 from robot_nav.SIM_ENV.sim import SIM
 from utils import get_buffer
 
@@ -50,6 +52,11 @@ def main(args=None):
     sim = SIM(
         world_file="worlds/robot_world.yaml", disable_plotting=not parsed_args.render
     )  # instantiate environment
+    
+    # Reconfigure loguru logger to show seconds and milliseconds
+    logger.remove()
+    logger.add(sys.stdout, format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>")
+    
     replay_buffer = get_buffer(
         model,
         sim,
