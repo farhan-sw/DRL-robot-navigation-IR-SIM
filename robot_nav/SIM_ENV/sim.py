@@ -146,24 +146,24 @@ class SIM(SIM_ENV):
             (float): Computed reward for the current state.
         """
         if goal:
-            return 100.0
+            return 200.0  # High reward for precise docking
         elif collision:
-            # Mengurangi hukuman tabrakan (dari -100) agar robot tidak terlalu "penakut"
-            return -20.0
+            return -500.0  # Catastrophic penalty for forklift crash
         else:
-            r3 = lambda x: 1.35 - x if x < 1.35 else 0.0
-            
-            # action[0] = lin_vel (0 hingga 0.5), action[1] = ang_vel (-1 hingga 1)
-            # Memberi reward jika maju *searah* dengan arah tujuan (cos > 0)
+            # action[0] = lin_vel (-1 to 1), action[1] = ang_vel (-1 to 1)
+            # Progress reward: moving towards the goal (cos > 0)
             progress_reward = action[0] * (cos_angle * 2.0)
             
-            # Memberi hukuman berat jika robot hanya berputar-putar di tempat
-            spin_penalty = abs(action[1]) * 1.5
+            # Smoothness penalty: Forklifts shouldn't make jerky turns to avoid dropping payload
+            spin_penalty = abs(action[1]) * 0.5
             
-            # Hukuman jika terlalu dekat dengan rintangan
-            obstacle_penalty = r3(min(laser_scan)) * 2.0
+            # Proximity penalty: Forklifts must maintain a safe distance (0.5m) from racks/walls
+            min_lidar_dist = min(laser_scan) if len(laser_scan) > 0 else 10.0
+            obstacle_penalty = 0.0
+            if min_lidar_dist < 0.5:
+                obstacle_penalty = (0.5 - min_lidar_dist) * 2.0
             
-            # Hukuman waktu (memaksa robot bergerak cepat)
-            time_penalty = 0.2
+            # Base time penalty (relaxed to 0.1 to allow stopping/waiting)
+            time_penalty = 0.1
             
             return progress_reward - spin_penalty - obstacle_penalty - time_penalty

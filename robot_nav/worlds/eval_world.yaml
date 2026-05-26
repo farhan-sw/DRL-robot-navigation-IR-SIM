@@ -7,13 +7,13 @@ world:
 
 robot:
   - kinematics: {name: 'diff'}
-    shape: {name: 'rectangle', length: 1.6, width: 0.8}
+    shape: {name: 'rectangle', length: 1.0, width: 0.5}
     vel_min: [ -1.0, -1.0 ]
     vel_max: [ 1.0, 1.0 ]
-    state: [3, 4, 0, 0]
+    state: [3, 4, 0]
     goal: [9, 9, 0]
     arrive_mode: position
-    goal_threshold: 0.15
+    goal_threshold: 0.3
 
     sensors:
       - type: 'lidar2d'
